@@ -1,0 +1,21 @@
+{
+    "model_name": "LightGBM",
+    "selected_metric": "RMSE",
+    "rmse": 2.47364371070489,
+    "mae": 1.1099739081065965,
+    "features": [
+        "lag_7",
+        "lag_14",
+        "lag_28",
+        "rmean_7",
+        "rmean_14",
+        "rmean_28",
+        "wday",
+        "month",
+        "year",
+        "is_event"
+    ],
+    "horizon": 28,
+    "store_scope": "CA_1",
+    "training_type": "time-based split"
+}
