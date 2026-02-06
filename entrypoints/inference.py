@@ -12,11 +12,10 @@ def main():
     print("Starting inference pipeline...")
 
     run_inference(
-        raw_data_dir="data/raw",
-        output_path="data/predictions/forecast.csv"
+        config_path="config/local.yaml"
     )
 
-    print("✅ Inference completed successfully.")
+    print("Inference completed successfully.")
 
 
 if __name__ == "__main__":

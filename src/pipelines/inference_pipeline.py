@@ -2,6 +2,7 @@ import joblib
 from pathlib import Path
 import pandas as pd
 
+from src.utils.config_loader import load_config
 from src.pipelines.data_ingestion import load_raw_data
 from src.pipelines.feature_engineering import (
     build_sales_long,
@@ -9,39 +10,25 @@ from src.pipelines.feature_engineering import (
 )
 
 
-MODEL_PATH = Path("models/lightgbm/model.pkl")
+def run_inference(config_path: str):
+    config = load_config(config_path)
 
-FEATURES = [
-    "lag_7", "lag_14", "lag_28",
-    "rmean_7", "rmean_14", "rmean_28",
-    "wday", "month", "year",
-    "is_event"
-]
-
-
-def run_inference(
-    raw_data_dir: str = "data/raw",
-    output_path: str = "data/predictions/forecast.csv"
-):
-    """
-    Run inference using pre-trained LightGBM model.
-    """
+    raw_data_dir = config["data"]["raw_dir"]
+    output_path = config["data"]["prediction_output"]
+    model_path = config["model"]["model_path"]
+    features = config["features"]
 
     sales_df, calendar_df, _ = load_raw_data(raw_data_dir)
 
     sales_long = build_sales_long(sales_df, calendar_df)
     fe_df = build_features(sales_long)
 
-    model = joblib.load(MODEL_PATH)
+    model = joblib.load(model_path)
 
-    X = fe_df[FEATURES]
-    fe_df["prediction"] = model.predict(X)
+    fe_df["prediction"] = model.predict(fe_df[features])
 
-    output_path = Path(output_path)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     fe_df.to_csv(output_path, index=False)
 
-    print(f"Predictions saved to: {output_path}")
-
     return fe_df
+
