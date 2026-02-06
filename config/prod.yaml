@@ -1,0 +1,24 @@
+environment: prod
+
+data:
+  raw_dir: /mnt/data/raw
+  prediction_output: /mnt/data/predictions/forecast.csv
+
+model:
+  type: lightgbm
+  model_path: /models/lightgbm/model.pkl
+
+training:
+  horizon: 28
+
+features:
+  - lag_7
+  - lag_14
+  - lag_28
+  - rmean_7
+  - rmean_14
+  - rmean_28
+  - wday
+  - month
+  - year
+  - is_event
