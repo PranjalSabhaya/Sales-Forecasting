@@ -3,6 +3,7 @@ from pathlib import Path
 import pandas as pd
 
 from src.utils.config_loader import load_config
+from src.utils.data_validation import run_data_validation
 from src.pipelines.data_ingestion import load_raw_data
 from src.pipelines.feature_engineering import (
     build_sales_long,
@@ -21,6 +22,9 @@ def run_inference(config_path: str):
     sales_df, calendar_df, _ = load_raw_data(raw_data_dir)
 
     sales_long = build_sales_long(sales_df, calendar_df)
+    
+    run_data_validation(sales_long)
+
     fe_df = build_features(sales_long)
 
     model = joblib.load(model_path)
