@@ -1,38 +1,91 @@
 import joblib
-from pathlib import Path
 import pandas as pd
+from pathlib import Path
 
 from src.utils.config_loader import load_config
 from src.utils.data_validation import run_data_validation
-from src.pipelines.data_ingestion import load_raw_data
-from src.pipelines.feature_engineering import (
-    build_sales_long,
-    build_features
-)
 
 
 def run_inference(config_path: str):
+
     config = load_config(config_path)
 
-    raw_data_dir = config["data"]["raw_dir"]
+    feature_path = config["data"]["feature_path"]
     output_path = config["data"]["prediction_output"]
     model_path = config["model"]["model_path"]
     features = config["features"]
+    horizon = config.get("horizon", 28)
 
-    sales_df, calendar_df, _ = load_raw_data(raw_data_dir)
+    # --------------------------------------------------
+    # Load processed feature data
+    # --------------------------------------------------
 
-    sales_long = build_sales_long(sales_df, calendar_df)
-    
-    run_data_validation(sales_long)
+    if not Path(feature_path).exists():
+        raise FileNotFoundError(
+            "Feature file not found. Run feature engineering first."
+        )
 
-    fe_df = build_features(sales_long)
+    df = pd.read_csv(
+        feature_path,
+        parse_dates=["date"]
+    )
+
+    print("Loaded feature dataset:", df.shape)
+
+    if df.empty:
+        raise ValueError("Feature dataset is empty.")
+
+    # Optional validation
+    run_data_validation(df)
+
+    # --------------------------------------------------
+    # Select last horizon rows per group
+    # --------------------------------------------------
+
+    df = df.sort_values(["store_id", "item_id", "date"])
+
+    df["rank"] = (
+        df.groupby(["store_id", "item_id"])["date"]
+        .rank(method="first", ascending=True)
+    )
+
+    df["max_rank"] = (
+        df.groupby(["store_id", "item_id"])["rank"]
+        .transform("max")
+    )
+
+    inference_df = df[df["rank"] > df["max_rank"] - horizon].copy()
+
+    print("Inference dataset shape:", inference_df.shape)
+
+    # --------------------------------------------------
+    # Load model
+    # --------------------------------------------------
 
     model = joblib.load(model_path)
 
-    fe_df["prediction"] = model.predict(fe_df[features])
+    # --------------------------------------------------
+    # Predict
+    # --------------------------------------------------
 
-    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
-    fe_df.to_csv(output_path, index=False)
+    inference_df["prediction"] = model.predict(
+        inference_df[features]
+    )
 
-    return fe_df
+    # --------------------------------------------------
+    # Save predictions
+    # --------------------------------------------------
 
+    Path(output_path).parent.mkdir(
+        parents=True,
+        exist_ok=True
+    )
+
+    inference_df.to_csv(
+        output_path,
+        index=False
+    )
+
+    print("✅ Predictions saved to:", output_path)
+
+    return inference_df

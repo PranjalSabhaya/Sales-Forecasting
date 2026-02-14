@@ -2,6 +2,7 @@ environment: prod
 
 data:
   raw_dir: /mnt/data/raw
+  feature_path: /mnt/data/processed/train_fe.csv
   prediction_output: /mnt/data/predictions/forecast.csv
 
 model:

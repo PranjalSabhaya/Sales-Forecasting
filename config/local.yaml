@@ -2,6 +2,7 @@ environment: local
 
 data:
   raw_dir: data/raw
+  feature_path: data/processed/train_fe.csv
   prediction_output: data/predictions/forecast.csv
 
 model:
