@@ -1,34 +1,33 @@
-
 """
-Training Pipeline (Offline)
+Training Pipeline (Offline - Production Grade)
 
-NOTE:
------
-The final LightGBM model used in production was trained during
-the experimentation phase (notebooks).
+This pipeline:
+- Assumes feature engineering is already completed
+- Reads processed feature CSV
+- Performs time-aware split (vectorized)
+- Trains final LightGBM model with early stopping
+- Saves artifacts
+- Logs experiment
 
-This pipeline exists to:
-- Document the training process
-- Enable reproducibility if retraining is required
-- Ensure feature parity with inference
-
-It is NOT executed during deployment.
+Feature engineering must be run BEFORE this.
 """
-
 
 import json
 import joblib
+import numpy as np
+import pandas as pd
 from pathlib import Path
 
 from lightgbm import LGBMRegressor
+from lightgbm import early_stopping, log_evaluation
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 
-from src.pipelines.data_ingestion import load_raw_data
-from src.pipelines.feature_engineering import (
-    build_sales_long,
-    build_features
-)
+from src.utils.experiment_logger import log_experiment
 
+
+# --------------------------------------------------
+# Configuration
+# --------------------------------------------------
 
 FEATURES = [
     "lag_7", "lag_14", "lag_28",
@@ -39,42 +38,79 @@ FEATURES = [
 
 HORIZON = 28
 MODEL_DIR = Path("models/lightgbm")
+MODEL_PATH = MODEL_DIR / "model.pkl"
+FEATURE_DATA_PATH = Path("data/processed/train_fe.csv")
 
+
+# --------------------------------------------------
+# Evaluation
+# --------------------------------------------------
 
 def evaluate(y_true, y_pred):
     return {
         "MAE": mean_absolute_error(y_true, y_pred),
-        "RMSE": mean_squared_error(y_true, y_pred, squared=False)
+        "RMSE": np.sqrt(mean_squared_error(y_true, y_pred))
     }
 
-def train_model(
-    raw_data_dir: str = "data/raw",
-    overwrite: bool = False
-):
-    """
-    Optional offline training function.
 
-    WARNING:
-    --------
-    This function retrains the model and overwrites the
-    existing model artifact if overwrite=True.
-    """
+# --------------------------------------------------
+# Training Function
+# --------------------------------------------------
 
-    if MODEL_DIR.exists() and not overwrite:
-        raise RuntimeError(
-            "Model already exists. Set overwrite=True to retrain."
+def train_model(overwrite: bool = False):
+
+    if not FEATURE_DATA_PATH.exists():
+        raise FileNotFoundError(
+            "Feature file not found. Run feature engineering first."
         )
 
-    # Load raw data
-    sales_df, calendar_df, _ = load_raw_data(raw_data_dir)
+    if MODEL_PATH.exists() and not overwrite:
+        raise RuntimeError(
+            f"Model already exists at {MODEL_PATH}. "
+            "Set overwrite=True to retrain."
+        )
 
-    # Feature engineering
-    sales_long = build_sales_long(sales_df, calendar_df)
-    fe_df = build_features(sales_long)
+    print("🚀 Starting offline training pipeline...")
 
-    # Time-aware split
-    train_df = fe_df.groupby(["store_id", "item_id"]).head(-HORIZON)
-    valid_df = fe_df.groupby(["store_id", "item_id"]).tail(HORIZON)
+    # --------------------------------------------------
+    # Load feature-engineered data
+    # --------------------------------------------------
+
+    df = pd.read_csv(
+        FEATURE_DATA_PATH,
+        parse_dates=["date"]
+    )
+
+    print("Feature DataFrame shape:", df.shape)
+
+    if df.empty:
+        raise ValueError("Feature dataset is empty.")
+
+    # Ensure correct ordering
+    df = df.sort_values(["store_id", "item_id", "date"])
+
+    # --------------------------------------------------
+    # Vectorized Time-aware split
+    # --------------------------------------------------
+
+    df["rank"] = (
+        df.groupby(["store_id", "item_id"])["date"]
+        .rank(method="first", ascending=True)
+    )
+
+    df["max_rank"] = (
+        df.groupby(["store_id", "item_id"])["rank"]
+        .transform("max")
+    )
+
+    train_df = df[df["rank"] <= df["max_rank"] - HORIZON]
+    valid_df = df[df["rank"] > df["max_rank"] - HORIZON]
+
+    if train_df.empty:
+        raise ValueError("Training dataset is empty after split.")
+
+    print("📊 Train shape:", train_df.shape)
+    print("📊 Valid shape:", valid_df.shape)
 
     X_train = train_df[FEATURES]
     y_train = train_df["sales"]
@@ -82,10 +118,13 @@ def train_model(
     X_valid = valid_df[FEATURES]
     y_valid = valid_df["sales"]
 
-    # Train LightGBM
+    # --------------------------------------------------
+    # Train LightGBM with Early Stopping
+    # --------------------------------------------------
+
     model = LGBMRegressor(
         num_leaves=63,
-        n_estimators=400,
+        n_estimators=2000,  # large upper bound
         min_child_samples=50,
         max_depth=8,
         learning_rate=0.01,
@@ -95,29 +134,74 @@ def train_model(
         bagging_freq=1,
         bagging_fraction=0.6,
         objective="regression",
-        eval_metric="l1",
         random_state=42,
-        n_jobs=1)
+        n_jobs=-1
+    )
 
+    model.fit(
+        X_train,
+        y_train,
+        eval_set=[(X_valid, y_valid)],
+        eval_metric="l1",
+        callbacks=[
+        early_stopping(stopping_rounds=100),
+        log_evaluation(period=100)]
+    )
 
-    model.fit(X_train, y_train)
-
+    # --------------------------------------------------
     # Evaluate
+    # --------------------------------------------------
+
     preds = model.predict(X_valid)
     metrics = evaluate(y_valid, preds)
 
-    # Save artifacts
-    MODEL_DIR.mkdir(parents=True, exist_ok=True)
+    print("📈 Validation Metrics:", metrics)
 
-    joblib.dump(model, MODEL_DIR / "model.pkl")
+    # --------------------------------------------------
+    # Save model
+    # --------------------------------------------------
+
+    MODEL_DIR.mkdir(parents=True, exist_ok=True)
+    joblib.dump(model, MODEL_PATH)
+
+    metadata = {
+        "model": "LightGBM",
+        "best_iteration": model.best_iteration_,
+        "features": FEATURES,
+        "horizon": HORIZON,
+        "metrics": metrics
+    }
 
     with open(MODEL_DIR / "metadata.json", "w") as f:
-        json.dump({
-            "model": "LightGBM",
-            "metrics": metrics,
-            "features": FEATURES,
-            "horizon": HORIZON
-        }, f, indent=4)
+        json.dump(metadata, f, indent=4)
+
+    # --------------------------------------------------
+    # Save Feature Importance
+    # --------------------------------------------------
+
+    importance_df = pd.DataFrame({
+        "feature": FEATURES,
+        "importance": model.feature_importances_
+    }).sort_values("importance", ascending=False)
+
+    importance_df.to_csv(
+        MODEL_DIR / "feature_importance.csv",
+        index=False
+    )
+
+    # --------------------------------------------------
+    # Log experiment
+    # --------------------------------------------------
+
+    log_experiment(
+        model_name="LightGBM",
+        horizon=HORIZON,
+        features=FEATURES,
+        mae=metrics["MAE"],
+        rmse=metrics["RMSE"],
+        notes="Offline training pipeline with early stopping"
+    )
+
+    print("✅ Model saved, feature importance stored, experiment logged.")
 
     return model, metrics
-

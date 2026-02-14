@@ -1,0 +1,11 @@
+feature,importance
+rmean_7,4074
+rmean_28,3602
+rmean_14,3125
+month,3049
+wday,2760
+lag_14,1961
+lag_7,1380
+lag_28,1377
+year,605
+is_event,0

@@ -1,0 +1,2 @@
+timestamp,model_name,horizon,features,mae,rmse,notes
+2026-02-14T15:58:42.977312,LightGBM,28,lag_7|lag_14|lag_28|rmean_7|rmean_14|rmean_28|wday|month|year|is_event,1.1067,2.6257,Offline training pipeline with early stopping
