@@ -1,15 +1,28 @@
-from fastapi import APIRouter
-from app.schemas.request_schema import RawPredictionRequest
-from app.services.prediction_service import make_prediction
+from fastapi import APIRouter, HTTPException
+
+from app.schemas.request_schema import ForecastRequest
+from app.services.forecast_service import recursive_forecast
 
 router = APIRouter()
 
+@router.post("/forecast")
+def forecast(request: ForecastRequest):
+    try:
+        predictions = recursive_forecast(
+            request.store_id,
+            request.item_id,
+            request.forecast_days
+        )
 
-@router.post("/predict")
-def predict(request: RawPredictionRequest):
+        return {
+            "store_id": request.store_id,
+            "item_id": request.item_id,
+            "forecast_days": request.forecast_days,
+            "forecast": predictions
+        }
 
-    prediction = make_prediction(request.dict())
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
-    return {
-        "prediction": prediction
-    }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Internal server error")

@@ -3,7 +3,7 @@ from app.api.routes import router
 
 app = FastAPI(
     title="Sales Forecasting API",
-    version="1.0.0"
+    version="1.0.1"
 )
 
 app.include_router(router)
