@@ -1,7 +1,7 @@
 import numpy as np
 from datetime import datetime, timedelta
 
-from app.core.model_loader import load_model
+from app.core.model_loader import get_model
 from app.services.history_services import get_sales_history
 
 
@@ -32,7 +32,10 @@ def build_features(history, current_date):
 
 def recursive_forecast(store_id, item_id, forecast_days):
 
-    model = load_model()
+    model = get_model()
+
+    if model is None:
+        raise ValueError("Model not loaded")
 
     history = get_sales_history(store_id, item_id)
 
