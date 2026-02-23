@@ -9,6 +9,9 @@ app = FastAPI(
 app.include_router(router)
 
 
-@app.get("/")
+@app.get("/health")
 def health_check():
-    return {"status": "API is running"}
+    return {
+        "status": "healthy",
+        "service": "sales-forecast-api"
+    }
