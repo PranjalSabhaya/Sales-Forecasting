@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 
-from app.schemas.request_schema import ForecastRequest
-from app.services.forecast_service import recursive_forecast
+from backend.schemas.request_schema import ForecastRequest
+from backend.services.forecast_service import recursive_forecast
 
 router = APIRouter()
 

@@ -1,8 +1,8 @@
 import numpy as np
 from datetime import datetime, timedelta
 
-from app.core.model_loader import get_model
-from app.services.history_services import get_sales_history
+from backend.core.model_loader import get_model
+from backend.services.history_services import get_sales_history
 
 
 def build_features(history, current_date):

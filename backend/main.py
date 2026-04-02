@@ -1,6 +1,6 @@
 from fastapi import FastAPI,Request
-from app.api.routes import router
-from app.core.model_loader import load_model
+from backend.api.routes import router
+from backend.core.model_loader import load_model
 import time
 
 app = FastAPI(

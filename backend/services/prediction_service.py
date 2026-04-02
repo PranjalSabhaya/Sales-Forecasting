@@ -1,6 +1,6 @@
 import pandas as pd
-from app.core.model_loader import load_model
-from app.services.feature_builder import build_features_from_raw
+from backend.core.model_loader import load_model
+from backend.services.feature_builder import build_features_from_raw
 
 
 FEATURES = [
