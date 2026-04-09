@@ -1,7 +1,7 @@
 import requests
 
 
-API_URL = "http://127.0.0.1:8000/forecast"
+API_URL = "http://backend:8001/forecast"
 
 
 def get_forecast(store_id, item_id, forecast_days):
