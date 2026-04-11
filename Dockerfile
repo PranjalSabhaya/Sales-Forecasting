@@ -23,4 +23,4 @@ ENV PYTHONUNBUFFERED=1
 EXPOSE 8000
 
 # ✅ Correct module path
-CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "backend.main:app", "--bind", "0.0.0.0:$PORT", "--workers", "2"]
+CMD gunicorn -k uvicorn.workers.UvicornWorker backend.main:app --bind 0.0.0.0:$PORT --workers 2
