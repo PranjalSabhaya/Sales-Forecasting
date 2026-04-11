@@ -19,25 +19,29 @@ def startup_event():
 
     print("🚀 Starting application...")
 
-    model_url = os.getenv("MODEL_URL")
-    data_url = os.getenv("DATA_URL")
+    try:
+        model_url = os.getenv("MODEL_URL")
+        data_url = os.getenv("DATA_URL")
 
-    model_path = os.getenv("MODEL_PATH")
-    data_path = os.getenv("SALES_HISTORY_PATH")
+        model_path = os.getenv("MODEL_PATH")
+        data_path = os.getenv("SALES_HISTORY_PATH")
 
-    # 🔽 Download model
-    download_file(model_url, model_path)
+        # 🔽 Download model
+        download_file(model_url, model_path)
 
-    # 🔽 Download parquet data
-    download_file(data_url, data_path)
+        # 🔽 Download data
+        download_file(data_url, data_path)
 
-    # ✅ Validate parquet
-    validate_parquet(data_path)
+        # ✅ Validate parquet
+        validate_parquet(data_path)
 
-    # 🔥 Load model into memory
-    load_model()
+        # 🔥 Load model
+        load_model()
 
-    print("✅ Application ready.")
+        print("✅ Application ready.")
+
+    except Exception as e:
+        print(f"❌ Startup failed: {e}")
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
