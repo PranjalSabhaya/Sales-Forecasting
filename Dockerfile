@@ -30,4 +30,4 @@ ENV PYTHONUNBUFFERED=1
 
 EXPOSE 8001
 
-CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "backend.main:app", "--bind", "0.0.0.0:8001", "--workers", "2"]
+CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "app.main:app", "--bind", "0.0.0.0:$PORT", "--workers", "2"]

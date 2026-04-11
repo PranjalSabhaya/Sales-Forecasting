@@ -1,7 +1,13 @@
+import os
+from dotenv import load_dotenv
+
 from fastapi import FastAPI,Request
 from backend.api.routes import router
 from backend.core.model_loader import load_model
+from src.utils.download_assets import download_file
 import time
+
+load_dotenv()
 
 app = FastAPI(
     title="Sales Forecasting API",
@@ -10,9 +16,25 @@ app = FastAPI(
 
 @app.on_event("startup")
 def startup_event():
-    print("Loading ML model...")
+
+    print("🚀 Starting application...")
+
+    model_url = os.getenv("MODEL_URL")
+    data_url = os.getenv("DATA_URL")
+
+    model_path = os.getenv("MODEL_PATH")
+    data_path = os.getenv("SALES_HISTORY_PATH")
+
+    # Download model
+    download_file(model_url, model_path)
+
+    # Download data
+    download_file(data_url, data_path)
+
+    # Load model
     load_model()
-    print("Model loaded successfully.")
+
+    print("✅ All assets ready.")
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
