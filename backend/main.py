@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI,Request
 from backend.api.routes import router
 from backend.core.model_loader import load_model
-from src.utils.download_assets import download_file
+from src.utils.download_assets import download_file, validate_parquet
 import time
 
 load_dotenv()
@@ -25,16 +25,19 @@ def startup_event():
     model_path = os.getenv("MODEL_PATH")
     data_path = os.getenv("SALES_HISTORY_PATH")
 
-    # Download model
+    # 🔽 Download model
     download_file(model_url, model_path)
 
-    # Download data
+    # 🔽 Download parquet data
     download_file(data_url, data_path)
 
-    # Load model
+    # ✅ Validate parquet
+    validate_parquet(data_path)
+
+    # 🔥 Load model into memory
     load_model()
 
-    print("✅ All assets ready.")
+    print("✅ Application ready.")
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
