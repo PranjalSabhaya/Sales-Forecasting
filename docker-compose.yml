@@ -6,7 +6,7 @@ services:
     build: .
     container_name: sales-backend
     ports:
-      - "8001:8001"
+      - "8000:8000"
     restart: always
 
   frontend:
