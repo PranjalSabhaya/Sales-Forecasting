@@ -1,7 +1,7 @@
 import requests
 
 
-API_URL = "http://backend:8001/forecast"
+API_URL = "https://sales-forecasting-uoln.onrender.com/forecast"
 
 
 def get_forecast(store_id, item_id, forecast_days):
