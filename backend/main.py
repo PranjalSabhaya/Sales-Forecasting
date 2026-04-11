@@ -73,3 +73,11 @@ def health_check():
         "status": "healthy",
         "service": "sales-forecast-api"
     }
+
+
+@app.get("/debug")
+def debug():
+    return {
+        "status": "debug working",
+        "model_loaded": True
+    }
